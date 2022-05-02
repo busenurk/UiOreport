@@ -1,6 +1,6 @@
 ---
 title: '**The effect of mRNA Vaccination on Small Gestational Age**'
-author: "Busenur Kızılaslan"
+author: "Busenur Kizilaslan"
 subtitle: '***Test Report***'
 output:
   html_document:
@@ -92,6 +92,8 @@ as.data.frame(data) %>% str()
 
 Factor variables are fixed for the reliable analysis. Also, the data set has possible outliers and missing values that have to be examined. 
 
+<br>
+
 ```{r echo=FALSE}
 data %<>% mutate(across(c(2, 4, 5, 6, 7, 8, 10, 11, 12, 13, 16, 17, 20), as.factor))
 as.data.frame(data) %>% str()
@@ -149,7 +151,7 @@ d4.obs = which(birthweight %in% d4)
 d5 = boxplot(gestage)$out
 d5.obs = which(gestage %in% d5)
 
-d.obs <- list(d1.obs, d2.obs, d3.obs, d4.obs, d5.obs)    # with dupicate
+d.obs <- list(d1.obs, d2.obs, d3.obs, d4.obs, d5.obs)    # with duplicate
 
 duplicated <- d.obs %>% unlist() %>% duplicated()
 
@@ -259,6 +261,8 @@ In the beginning of imputation step, the data set is splitted into two group whi
 
 After the normality test, Bayesian linear regression is used for bmipp and birthweight variables which are normally distributed. Predictive mean matching is used for other variables for multiple imputation.
 
+<br>
+
 ```{r echo=FALSE, cache = T}
 norm <- data2 %>% dplyr::select(depression_severity, bmipp, age, birthweight, gestage) %>% 
   mvn() 
@@ -332,7 +336,7 @@ kbl(gw) %>%
 trimesters <- merged.data  %>% with(ifelse(gestationalweekofvaccination > 0 & gestationalweekofvaccination <= 13, 1, 
                   ifelse(gestationalweekofvaccination >=14 & gestationalweekofvaccination <= 26 , 2, 3))) 
 
-trimesters[is.na(trimesters)]<- 0   ## convert NA values to 0, 0 represents no info about trimester
+trimesters[is.na(trimesters)]<- 0   ## convert NA values to 0, 0 represents no info about trimester (non-vaccinated)
 
 merged.data <- merged.data %>% mutate(trimesters = as.factor(trimesters))
 ```
@@ -369,9 +373,9 @@ for (i in 1:nrow(merged.data)){
    k <- which(merged.data$gestage.week[i] == GAthreshold$GAweeks)
    
    if(merged.data$birthweight[i] < GAthreshold$threshold[k]){
-     gestational.age[i] <- 1 }    # small for gestational age
+     gestational.age[i] <- 1 }    # small for gestational age (SGA)
      else {
-       gestational.age[i] <- 0}}  # appropriate for gestational age
+       gestational.age[i] <- 0}}  # appropriate for gestational age (AGA)
     
 table(gestational.age)  
 
@@ -384,16 +388,21 @@ merged.data <- merged.data %>% mutate(gestational.age = as.factor(gestational.ag
 knitr::include_graphics("table1.png")
 ```
 
+<br>
+
 # Method
 
 It is seen that, the vaccination variable has unbalanced groups as vaccinated and non-vaccinated. For this reason, inverse probability of treatment weighting (IPTW) is used to balance groups using a propensity score matching weight approach. 
 
-The association between vaccine and small gestational age at birth is examined with logistic regression because the gestational.age variable is binary. In this manner, gestatinal.age and vaccination variables are considered as response and explanatory variables, respectively. The logistic regression is applied both before and after IPTW for comparison purpose.
+The association between vaccination and small gestational age at birth is examined with logistic regression because the gestational.age variable is binary. In this manner, gestatinal.age and vaccination variables are considered as response and explanatory variables, respectively. The logistic regression is applied both before and after IPTW for comparison purpose.
+
+<br>
 
 ## The Summary of Variables Before/After Inverse Probability of Treatment Weighting (IPTW)
 
 In the IPTW method, the propensity score is defined as the probability of being vaccinated. It is obtained from a logistic regression model where the vaccination variable is considered as a binary dependent variable and the following list of covariates is considered as the independent variables.
 
+<br>
 
 ```{r echo=FALSE}
 merged.data.rev <- merged.data[,-c(2,3,17,18,20,23,24)] 
@@ -405,6 +414,7 @@ con.var <- c("ibu_prepreg","paracet_prepreg","opioid_prepreg","diabetes","depres
 con.var
 ```
 
+<br>
 
 Balance before and after IPTW assessed using the standardized mean difference (SMD) between vaccination groups. A SMD of greater that 0.1 is usually considered to indicate a significant imbalance[@austin2009balance].  
 
@@ -413,6 +423,8 @@ In the next, firstly, we present results for the first imputation data sets ($m 
 
 
 Unweighted distribution of baseline characteristics of the study population for $m=1$. 
+
+<br>
 
 ```{r echo=FALSE}
 merged.data.rev1 <- merged.data.rev %>% filter(.imp==1)
@@ -427,15 +439,22 @@ print(tab.un.adj1, smd=TRUE)
 <br>
 
 It is concluded that 7 variables have a SMD of greater than 0.1.
+
+<br>
+
 ```{r echo=FALSE}
 ### imbalance covariates 
 as.data.frame(ExtractSmd(tab.un.adj1)) %>%  filter(ExtractSmd(tab.un.adj1)>0.1)
 
 ```
 
+<br>
+
 ## Propensity Score Estimation
 
 For $m = 1$, IPTW performed for a set of the selected covariates using the propensity score. Logistic regression is fitted to estimate the probability of vaccination groups.
+
+<br>
 
 ```{r echo=FALSE}
 ps.model<-glm(formula = vaccination ~  ibu_prepreg + paracet_prepreg + opioid_prepreg + diabetes + 
@@ -460,7 +479,6 @@ merged.data.rev1$propensity_novac  <- 1 - merged.data.rev1$propensity_vac
 merged.data.rev1$ate <- ifelse(merged.data.rev1$vaccination == 1, merged.data.rev1$propensity_vac, merged.data.rev1$propensity_novac)
 ```
 
-
 ```{r echo=FALSE}
 merged.data.rev1$prop.min <- pmin(merged.data.rev1$propensity_vac,merged.data.rev1$propensity_novac )
 
@@ -468,6 +486,8 @@ merged.data.rev1$prop.min <- pmin(merged.data.rev1$propensity_vac,merged.data.re
 merged.data.rev1$ps_weights <- merged.data.rev1$prop.min / merged.data.rev1$ate
 
 ```
+
+<br>
 
 The matching weight method [@li2013weighting] is used for creating weights. The matching weight is defined as the smaller of the predicted probabilities of receiving or not receiving the treatment (vaccination) over the predicted probability of being assigned to the patient is actually in. After weighting, all the standardized mean differences are below 0.1.
 
@@ -477,6 +497,7 @@ merged.data.rev1_svy <- svydesign(ids = ~ 1, data = merged.data.rev1, weights = 
 
 ```
 
+<br>
 
 ```{r echo=FALSE}
 #### SMD table with weight after IPTW 
@@ -537,9 +558,13 @@ print(resCombo, quote = FALSE)
 ```
 
 
+<br>
 
+This analysis is conducted before and after IPTW for $m = 1$. 
 
-This analysis is conducted before and after IPTW for $m = 1$. The before IPTW results are given as follows.  
+The logistic regression results for the main model (gestation.age and vaccination variables) before IPTW are given as follows.  
+
+<br>
 
 ```{r echo=FALSE}
 ## Unmatched model (unadjusted)
@@ -548,12 +573,15 @@ glm.unmatched <- glm(formula = (gestational.age == 1) ~  vaccination,
                     data    =  merged.data.rev1)
 
 summary(glm.unmatched)
-exp(coefficients(glm.unmatched))
 
 ```
 
+<br>
 
-The after IPTW results are given as follows.  
+The logistic regression results for the main model after IPTW results are given as follows. 
+
+<br>
+
 
 ```{r echo=FALSE}
 
@@ -562,14 +590,15 @@ glm.weighted <-glm(formula = (gestational.age == 1) ~  vaccination, weights = ps
     family  = quasibinomial(),
     data    =  merged.data.rev1)
 summary(glm.weighted)
-coefficients(glm.weighted)
-exp(coefficients(glm.weighted))
-
 ```
+
+<br>
 
 ## Final Analysis
 
 In this part, the analysis conducted with all imputed data sets (m is selected 5) after IPTW, and the results are combined with pool function. 
+
+<br>
 
 ```{r echo=FALSE}
 ## Results for all imputed data sets before IPTW
@@ -588,11 +617,15 @@ paste('Odd ratio before IPTW:' , round(or1[2],2))
 
 ```
 
+<br>
+
 The effect of vaccination variable on the response variable gestational.age is explained using an odds ratio (OR). Since $OR>1$, vaccinated observations has a higher odds of having the SGA compared with the non-vaccinated group. 
 
 Based on the above results, since OR before IPTW is 6.26, vaccinated observations have more risk for SGA event than non-vaccinated observations. This result based on imbalanced data set.
 
 In the next, the analysis conducted with all imputed data sets (m is selected 5) after IPTW, and the results are combined with pool function.
+
+<br>
 
 ```{r echo=FALSE}
 ## Results for all imputed data sets after IPTW
@@ -610,14 +643,18 @@ final.fit <- merged.data.rev %>%
 ffit2 <- final.fit %>% summary()
 ```
 
-```{r}
+```{r echo=FALSE}
 or2 <- ffit2$estimate %>% exp()
 print(final.fit)
 paste('Odd ratio after IPTW:' , round(or2[2],2))
 ```
 
+<br>
 
-Based on the above results, since OR after IPTW is 1.29, vaccinated observations have slightly risk for SGA event than non-vaccinated observations. This result based on balanced data set. Hence, it is observed that OR decreases significantly using IPTW.
+
+Based on the above results, since OR after IPTW is 1.29, vaccinated observations have slightly more risk for SGA event than non-vaccinated observations. This result based on balanced data set. Hence, it is observed that OR decreases significantly using IPTW.
+
+<br>
 
 # Limitations
 
@@ -629,6 +666,8 @@ Based on the above results, since OR after IPTW is 1.29, vaccinated observations
 
 - The lack of domain knowledge for outlier and missing value evaluation. 
 
+<br>
+
 # Packages and Details
 
 In this study, R statistical software[@r] (version 4.2.0) is used. The interactive report is prepared with R Markdown. The packages used in the study are listed below.
@@ -636,6 +675,8 @@ In this study, R statistical software[@r] (version 4.2.0) is used. The interacti
 ```{markdown}
 readr, tidyverse, magrittr, naniar, mice, dplyr, GGally, finalfit, usethis, devtools, psych, ltm, VIM, plotly, nortest, car, Hmisc, purrr, reshape2, MVN, mvoutlier,  kableExtra, grid, shadowtext,  tableone, Matching, survey, ggplot2
 ```
+
+<br>
 
 # 🚀 References
 
